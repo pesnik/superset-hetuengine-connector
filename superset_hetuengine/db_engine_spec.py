@@ -11,9 +11,13 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from sqlalchemy.engine.url import URL
+from sqlalchemy.engine import Inspector
 from superset.db_engine_specs.base import BaseEngineSpec
 from superset.db_engine_specs.presto import PrestoEngineSpec
 from superset.errors import ErrorLevel, SupersetError, SupersetErrorType
+from superset.models.core import Database
+from superset.superset_typing import ResultSetColumnType
+from superset.sql_parse import Table
 
 logger = logging.getLogger(__name__)
 
@@ -95,8 +99,8 @@ class HetuEngineSpec(PrestoEngineSpec):
             return f"TIME '{dttm.strftime('%H:%M:%S')}'"
         return None
 
-    @classmethod
-    def get_extra_params(cls, database) -> Dict[str, Any]:
+    @staticmethod
+    def get_extra_params(database) -> Dict[str, Any]:
         """
         Extract HetuEngine-specific parameters from database configuration.
 
@@ -106,30 +110,82 @@ class HetuEngineSpec(PrestoEngineSpec):
         Returns:
             Dictionary of extra parameters for connection
         """
-        extra_params = super().get_extra_params(database)
+        import json
+
+        extra_params = PrestoEngineSpec.get_extra_params(database)
 
         # Extract HetuEngine-specific parameters from encrypted_extra or extra
+        # These might be JSON strings that need to be parsed
         encrypted_extra = database.encrypted_extra or {}
+        if isinstance(encrypted_extra, str):
+            try:
+                encrypted_extra = json.loads(encrypted_extra)
+            except (json.JSONDecodeError, TypeError):
+                logger.warning(f"Failed to parse encrypted_extra as JSON: {encrypted_extra}")
+                encrypted_extra = {}
+
         extra = database.extra or {}
+        if isinstance(extra, str):
+            try:
+                extra = json.loads(extra)
+            except (json.JSONDecodeError, TypeError):
+                logger.warning(f"Failed to parse extra as JSON: {extra}")
+                extra = {}
 
         # Merge custom parameters
         connect_args = extra_params.get("connect_args", {})
 
+        # Check if connect_args are nested in extra or encrypted_extra
+        # This handles the case where users configure:
+        # {"connect_args": {"jar_path": "...", "service_discovery_mode": "..."}}
+        encrypted_extra_connect_args = {}
+        if isinstance(encrypted_extra, dict) and "connect_args" in encrypted_extra:
+            encrypted_extra_connect_args = encrypted_extra.get("connect_args", {})
+            if isinstance(encrypted_extra_connect_args, str):
+                try:
+                    encrypted_extra_connect_args = json.loads(encrypted_extra_connect_args)
+                except (json.JSONDecodeError, TypeError):
+                    logger.warning(f"Failed to parse connect_args from encrypted_extra: {encrypted_extra_connect_args}")
+                    encrypted_extra_connect_args = {}
+
+        extra_connect_args = {}
+        if isinstance(extra, dict) and "connect_args" in extra:
+            extra_connect_args = extra.get("connect_args", {})
+            if isinstance(extra_connect_args, str):
+                try:
+                    extra_connect_args = json.loads(extra_connect_args)
+                except (json.JSONDecodeError, TypeError):
+                    logger.warning(f"Failed to parse connect_args from extra: {extra_connect_args}")
+                    extra_connect_args = {}
+
         # Add JDBC-specific parameters
-        if "jar_path" in encrypted_extra:
+        # Priority: encrypted_extra.connect_args > extra.connect_args > encrypted_extra > extra
+        if "jar_path" in encrypted_extra_connect_args:
+            connect_args["jar_path"] = encrypted_extra_connect_args["jar_path"]
+        elif "jar_path" in extra_connect_args:
+            connect_args["jar_path"] = extra_connect_args["jar_path"]
+        elif "jar_path" in encrypted_extra:
             connect_args["jar_path"] = encrypted_extra["jar_path"]
         elif "jar_path" in extra:
             connect_args["jar_path"] = extra["jar_path"]
 
         # Add HetuEngine-specific parameters
-        if "service_discovery_mode" in encrypted_extra:
+        if "service_discovery_mode" in encrypted_extra_connect_args:
+            connect_args["service_discovery_mode"] = encrypted_extra_connect_args["service_discovery_mode"]
+        elif "service_discovery_mode" in extra_connect_args:
+            connect_args["service_discovery_mode"] = extra_connect_args["service_discovery_mode"]
+        elif "service_discovery_mode" in encrypted_extra:
             connect_args["service_discovery_mode"] = encrypted_extra["service_discovery_mode"]
         elif "service_discovery_mode" in extra:
             connect_args["service_discovery_mode"] = extra["service_discovery_mode"]
         else:
             connect_args["service_discovery_mode"] = "hsbroker"
 
-        if "tenant" in encrypted_extra:
+        if "tenant" in encrypted_extra_connect_args:
+            connect_args["tenant"] = encrypted_extra_connect_args["tenant"]
+        elif "tenant" in extra_connect_args:
+            connect_args["tenant"] = extra_connect_args["tenant"]
+        elif "tenant" in encrypted_extra:
             connect_args["tenant"] = encrypted_extra["tenant"]
         elif "tenant" in extra:
             connect_args["tenant"] = extra["tenant"]
@@ -137,12 +193,20 @@ class HetuEngineSpec(PrestoEngineSpec):
             connect_args["tenant"] = "default"
 
         # SSL parameters
-        if "ssl" in encrypted_extra:
+        if "ssl" in encrypted_extra_connect_args:
+            connect_args["ssl"] = encrypted_extra_connect_args["ssl"]
+        elif "ssl" in extra_connect_args:
+            connect_args["ssl"] = extra_connect_args["ssl"]
+        elif "ssl" in encrypted_extra:
             connect_args["ssl"] = encrypted_extra["ssl"]
         elif "ssl" in extra:
             connect_args["ssl"] = extra["ssl"]
 
-        if "ssl_verification" in encrypted_extra:
+        if "ssl_verification" in encrypted_extra_connect_args:
+            connect_args["ssl_verification"] = encrypted_extra_connect_args["ssl_verification"]
+        elif "ssl_verification" in extra_connect_args:
+            connect_args["ssl_verification"] = extra_connect_args["ssl_verification"]
+        elif "ssl_verification" in encrypted_extra:
             connect_args["ssl_verification"] = encrypted_extra["ssl_verification"]
         elif "ssl_verification" in extra:
             connect_args["ssl_verification"] = extra["ssl_verification"]
@@ -183,7 +247,7 @@ class HetuEngineSpec(PrestoEngineSpec):
         return uri
 
     @classmethod
-    def get_schema_names(cls, inspector) -> List[str]:
+    def get_schema_names(cls, inspector) -> set[str]:
         """
         Get list of schema names from database.
 
@@ -191,18 +255,18 @@ class HetuEngineSpec(PrestoEngineSpec):
             inspector: SQLAlchemy inspector
 
         Returns:
-            List of schema names
+            Set of schema names
         """
         try:
-            return inspector.get_schema_names()
+            return set(inspector.get_schema_names())
         except Exception as e:
             logger.error(f"Error getting schema names: {e}")
-            return []
+            return set()
 
     @classmethod
     def get_table_names(
         cls, database, inspector, schema: Optional[str]
-    ) -> List[str]:
+    ) -> set[str]:
         """
         Get list of table names from schema.
 
@@ -212,18 +276,18 @@ class HetuEngineSpec(PrestoEngineSpec):
             schema: Schema name
 
         Returns:
-            List of table names
+            Set of table names
         """
         try:
-            return inspector.get_table_names(schema)
+            return set(inspector.get_table_names(schema))
         except Exception as e:
             logger.error(f"Error getting table names: {e}")
-            return []
+            return set()
 
     @classmethod
     def get_view_names(
         cls, database, inspector, schema: Optional[str]
-    ) -> List[str]:
+    ) -> set[str]:
         """
         Get list of view names from schema.
 
@@ -233,31 +297,34 @@ class HetuEngineSpec(PrestoEngineSpec):
             schema: Schema name
 
         Returns:
-            List of view names
+            Set of view names
         """
         try:
-            return inspector.get_view_names(schema)
+            return set(inspector.get_view_names(schema))
         except Exception as e:
             logger.error(f"Error getting view names: {e}")
-            return []
+            return set()
 
     @classmethod
     def get_columns(
-        cls, inspector, table_name: str, schema: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        cls,
+        inspector: Inspector,
+        table: Table,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> List[ResultSetColumnType]:
         """
         Get column information for a table.
 
         Args:
             inspector: SQLAlchemy inspector
-            table_name: Table name
-            schema: Schema name
+            table: Table instance
+            options: Optional parameters
 
         Returns:
             List of column dictionaries
         """
         try:
-            return inspector.get_columns(table_name, schema)
+            return inspector.get_columns(table.table, table.schema)
         except Exception as e:
             logger.error(f"Error getting columns: {e}")
             return []
@@ -365,12 +432,15 @@ class HetuEngineSpec(PrestoEngineSpec):
         return "hive"
 
     @classmethod
-    def get_default_schema(cls, database) -> Optional[str]:
+    def get_default_schema(
+        cls, database: Database, catalog: Optional[str] = None
+    ) -> Optional[str]:
         """
         Get default schema name.
 
         Args:
             database: Superset database object
+            catalog: Catalog name
 
         Returns:
             Default schema name (typically 'default')

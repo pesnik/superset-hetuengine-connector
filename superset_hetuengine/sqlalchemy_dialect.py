@@ -47,7 +47,7 @@ class HetuEngineTypeCompiler(compiler.GenericTypeCompiler):
     def visit_BIGINT(self, type_, **kw):
         return "BIGINT"
 
-    def visit_FLOAT(self, type_, **kw):
+    def visit_FLOAT(self, type_, **kw):  # type: ignore[override]
         return "DOUBLE"
 
     def visit_DECIMAL(self, type_, **kw):
@@ -98,7 +98,7 @@ class HetuEngineDialect(default.DefaultDialect):
         """
         return jaydebeapi
 
-    def create_connect_args(self, url):
+    def create_connect_args(self, url):  # type: ignore[override]
         """
         Build connection arguments for JDBC connection.
 

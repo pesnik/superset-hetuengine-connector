@@ -135,11 +135,11 @@ chmod 644 /opt/jdbc-drivers/hetuengine-jdbc.jar
 sudo apt-get install openjdk-11-jre-headless
 
 # Set JAVA_HOME
-export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 export PATH=$JAVA_HOME/bin:$PATH
 
 # Add to ~/.bashrc for persistence
-echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> ~/.bashrc
+echo 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> ~/.bashrc
 ```
 
 ### "404 Not Found" or "Connection failed"
@@ -171,7 +171,7 @@ RUN apt-get update && \
     apt-get install -y openjdk-11-jre-headless && \
     rm -rf /var/lib/apt/lists/*
 
-ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
 # Install connector
 RUN pip install superset-hetuengine-connector
