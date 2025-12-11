@@ -330,8 +330,10 @@ class HetuEngineDialect(default.DefaultDialect):
             column_name = row[0]
             column_type = row[1]
 
+            # Include both 'name' and 'column_name' for compatibility with different Superset versions
             columns.append({
                 "name": column_name,
+                "column_name": column_name,  # Some Superset versions expect this key
                 "type": self._resolve_type(column_type),
                 "nullable": True,
                 "default": None,
