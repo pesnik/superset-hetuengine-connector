@@ -444,3 +444,93 @@ class HetuEngineDialect(default.DefaultDialect):
         """
         # Intentionally empty - auto-commit mode doesn't support transactions
         pass
+
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+        """
+        Get primary key constraint for a table.
+
+        HetuEngine/Trino doesn't enforce primary key constraints, so this
+        returns an empty constraint.
+
+        Args:
+            connection: Database connection
+            table_name: Table name
+            schema: Schema name
+            **kw: Additional keyword arguments
+
+        Returns:
+            Dictionary with empty constraint info
+        """
+        return {"constrained_columns": [], "name": None}
+
+    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+        """
+        Get foreign key constraints for a table.
+
+        HetuEngine/Trino doesn't enforce foreign key constraints, so this
+        returns an empty list.
+
+        Args:
+            connection: Database connection
+            table_name: Table name
+            schema: Schema name
+            **kw: Additional keyword arguments
+
+        Returns:
+            Empty list
+        """
+        return []
+
+    def get_indexes(self, connection, table_name, schema=None, **kw):
+        """
+        Get indexes for a table.
+
+        HetuEngine/Trino doesn't support traditional indexes, so this
+        returns an empty list.
+
+        Args:
+            connection: Database connection
+            table_name: Table name
+            schema: Schema name
+            **kw: Additional keyword arguments
+
+        Returns:
+            Empty list
+        """
+        return []
+
+    def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+        """
+        Get unique constraints for a table.
+
+        HetuEngine/Trino doesn't enforce unique constraints, so this
+        returns an empty list.
+
+        Args:
+            connection: Database connection
+            table_name: Table name
+            schema: Schema name
+            **kw: Additional keyword arguments
+
+        Returns:
+            Empty list
+        """
+        return []
+
+    def get_check_constraints(self, connection, table_name, schema=None, **kw):
+        """
+        Get check constraints for a table.
+
+        HetuEngine/Trino doesn't enforce check constraints, so this
+        returns an empty list.
+
+        Args:
+            connection: Database connection
+            table_name: Table name
+            schema: Schema name
+            **kw: Additional keyword arguments
+
+        Returns:
+            Empty list
+        """
+        return []
