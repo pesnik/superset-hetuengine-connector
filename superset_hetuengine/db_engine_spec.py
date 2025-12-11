@@ -449,3 +449,48 @@ class HetuEngineSpec(PrestoEngineSpec):
             Default schema name (typically 'default')
         """
         return "default"
+
+    @classmethod
+    def get_create_view(
+        cls, database: Database, schema: Optional[str], table: str
+    ) -> Optional[str]:
+        """
+        Get CREATE VIEW statement for a view.
+
+        Override PrestoEngineSpec implementation to avoid pyhive dependency.
+        HetuEngine via JDBC doesn't support retrieving view definitions easily.
+
+        Args:
+            database: Superset database object
+            schema: Schema name
+            table: Table/view name
+
+        Returns:
+            None (view creation not supported via JDBC)
+        """
+        # Return None instead of trying to fetch CREATE VIEW statement
+        # PrestoEngineSpec tries to use pyhive which we don't have
+        return None
+
+    @classmethod
+    def get_extra_table_metadata(
+        cls, database: Database, table: Table
+    ) -> Dict[str, Any]:
+        """
+        Get extra metadata for a table.
+
+        Override PrestoEngineSpec implementation to avoid pyhive dependency.
+
+        Args:
+            database: Superset database object
+            table: Table object
+
+        Returns:
+            Dictionary with empty metadata
+        """
+        # Return minimal metadata without calling parent's get_create_view
+        # which requires pyhive
+        return {
+            "partitions": {"cols": [], "latest": {}},
+            "metadata": {},
+        }
