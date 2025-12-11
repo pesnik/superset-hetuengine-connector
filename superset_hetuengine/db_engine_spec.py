@@ -50,6 +50,9 @@ class HetuEngineSpec(PrestoEngineSpec):
         "tenant": "default",
     }
 
+    # Disable async query execution - JayDeBeApi doesn't support cursor.poll()
+    run_async = False
+
     @classmethod
     def get_dbapi_exception_mapping(cls) -> Dict[Type[Exception], Type[Exception]]:
         """

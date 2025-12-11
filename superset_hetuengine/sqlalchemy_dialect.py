@@ -84,6 +84,9 @@ class HetuEngineDialect(default.DefaultDialect):
     supports_transactions = False
     supports_statement_cache = False
 
+    # JayDeBeApi doesn't support async cursor operations
+    supports_server_side_cursors = False
+
     preparer = HetuEngineIdentifierPreparer
     statement_compiler = HetuEngineCompiler
     type_compiler = HetuEngineTypeCompiler
