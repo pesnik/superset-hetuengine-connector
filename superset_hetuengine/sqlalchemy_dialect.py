@@ -78,6 +78,12 @@ class HetuEngineDialect(default.DefaultDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
 
+    # Transaction support configuration
+    # HetuEngine/Trino connections via JDBC are in auto-commit mode
+    # and don't support traditional transaction management
+    supports_transactions = False
+    supports_statement_cache = False
+
     preparer = HetuEngineIdentifierPreparer
     statement_compiler = HetuEngineCompiler
     type_compiler = HetuEngineTypeCompiler
@@ -396,3 +402,45 @@ class HetuEngineDialect(default.DefaultDialect):
             return True
         except Exception:
             return False
+
+    def do_rollback(self, dbapi_connection):  # type: ignore[override]
+        """
+        No-op rollback for auto-commit connections.
+
+        HetuEngine connections via JDBC are in auto-commit mode and don't
+        support explicit transaction control. This method is a no-op to
+        prevent errors when SQLAlchemy tries to rollback.
+
+        Args:
+            dbapi_connection: DBAPI connection (unused)
+        """
+        # Intentionally empty - auto-commit mode doesn't support rollback
+        pass
+
+    def do_commit(self, dbapi_connection):  # type: ignore[override]
+        """
+        No-op commit for auto-commit connections.
+
+        HetuEngine connections via JDBC are in auto-commit mode and don't
+        support explicit transaction control. This method is a no-op to
+        prevent errors when SQLAlchemy tries to commit.
+
+        Args:
+            dbapi_connection: DBAPI connection (unused)
+        """
+        # Intentionally empty - auto-commit mode doesn't need explicit commit
+        pass
+
+    def do_begin(self, dbapi_connection):  # type: ignore[override]
+        """
+        No-op begin for auto-commit connections.
+
+        HetuEngine connections via JDBC are in auto-commit mode and don't
+        support explicit transaction control. This method is a no-op to
+        prevent errors when SQLAlchemy tries to begin a transaction.
+
+        Args:
+            dbapi_connection: DBAPI connection (unused)
+        """
+        # Intentionally empty - auto-commit mode doesn't support transactions
+        pass
