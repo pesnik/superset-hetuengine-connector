@@ -166,7 +166,7 @@ You can set default values using environment variables:
 export HETUENGINE_JDBC_JAR=/opt/hetuengine-jdbc.jar
 
 # Java home
-export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
 # Default connection parameters (optional)
 export HETUENGINE_HOST=192.168.1.100
@@ -200,7 +200,7 @@ services:
   superset:
     image: superset-hetuengine:latest
     environment:
-      - JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+      - JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
       - HETUENGINE_JDBC_JAR=/opt/hetuengine-jdbc.jar
       - HETUENGINE_HOST=hetuengine-server
       - HETUENGINE_PORT=29860

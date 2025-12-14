@@ -34,7 +34,7 @@ java -version
 **Set JAVA_HOME:**
 ```bash
 # Linux/macOS (add to ~/.bashrc or ~/.zshrc)
-export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 export PATH=$JAVA_HOME/bin:$PATH
 
 # Verify
@@ -122,7 +122,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Set JAVA_HOME
-ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
 # Install HetuEngine connector
 RUN pip install superset-hetuengine-connector
@@ -155,7 +155,7 @@ services:
     ports:
       - "8088:8088"
     environment:
-      - JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+      - JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
       - HETUENGINE_JDBC_JAR=/opt/hetuengine-jdbc.jar
     volumes:
       - ./superset_home:/app/superset_home

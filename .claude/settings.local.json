@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv --version:*)",
+      "Bash(uv lock:*)",
+      "Bash(git add:*)",
+      "Bash(ls:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd uv package manager support and modernize project structure\n\n- Add pyproject.toml as single source of truth for dependencies\n- Remove legacy setup.py, setup.cfg, and requirements.txt files\n- Add uv.lock for deterministic dependency resolution (273 packages)\n- Add .python-version file pinning Python 3.11\n- Update GitHub Actions CI/CD workflow to use uv\n- Update README with uv installation and development instructions\n- Update MANIFEST.in to include modern packaging files\n- Update .gitignore for uv cache and virtual environments\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(git config:*)"
+    ]
+  }
+}

@@ -10,7 +10,7 @@ services:
       - "8088:8088"
     environment:
       # Java configuration
-      - JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+      - JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
       # HetuEngine JDBC configuration
       - HETUENGINE_JDBC_JAR=/opt/hetuengine-jdbc.jar

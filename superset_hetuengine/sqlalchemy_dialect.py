@@ -17,6 +17,30 @@ from sqlalchemy.sql import compiler
 logger = logging.getLogger(__name__)
 
 
+class HetuEngineCursorWrapper:
+    """
+    Wrapper for JayDeBeAPI cursor to provide missing methods.
+    """
+    
+    def __init__(self, cursor):
+        self._cursor = cursor
+        
+    def __getattr__(self, name):
+        # Delegate all other attributes to the original cursor
+        return getattr(self._cursor, name)
+    
+    def poll(self):
+        """
+        Implement poll() method for compatibility.
+        
+        Returns:
+            True if query is still running, False otherwise
+        """
+        # For JayDeBeAPI, we assume query is complete immediately
+        # since JayDeBeAPI is synchronous
+        return False
+
+
 class HetuEngineIdentifierPreparer(compiler.IdentifierPreparer):
     """Custom identifier preparer for HetuEngine."""
 
@@ -47,7 +71,7 @@ class HetuEngineTypeCompiler(compiler.GenericTypeCompiler):
     def visit_BIGINT(self, type_, **kw):
         return "BIGINT"
 
-    def visit_FLOAT(self, type_, **kw):
+    def visit_FLOAT(self, type_, **kw):  # type: ignore[override]
         return "DOUBLE"
 
     def visit_DECIMAL(self, type_, **kw):
@@ -78,6 +102,15 @@ class HetuEngineDialect(default.DefaultDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
 
+    # Transaction support configuration
+    # HetuEngine/Trino connections via JDBC are in auto-commit mode
+    # and don't support traditional transaction management
+    supports_transactions = False
+    supports_statement_cache = False
+
+    # JayDeBeApi doesn't support async cursor operations
+    supports_server_side_cursors = False
+
     preparer = HetuEngineIdentifierPreparer
     statement_compiler = HetuEngineCompiler
     type_compiler = HetuEngineTypeCompiler
@@ -98,7 +131,7 @@ class HetuEngineDialect(default.DefaultDialect):
         """
         return jaydebeapi
 
-    def create_connect_args(self, url):
+    def create_connect_args(self, url):  # type: ignore[override]
         """
         Build connection arguments for JDBC connection.
 
@@ -233,6 +266,132 @@ class HetuEngineDialect(default.DefaultDialect):
 
         return jdbc_url
 
+    def connect(self, *args, **kwargs):
+        """
+        Create a new connection.
+        
+        Returns:
+            Connection object with wrapped cursor
+        """
+        # Create the connection using parent implementation
+        conn = super().connect(*args, **kwargs)
+        
+        # Create a wrapper for the connection's cursor method
+        original_cursor = conn.cursor
+        
+        def wrapped_cursor():
+            cursor = original_cursor()
+            return HetuEngineCursorWrapper(cursor)
+        
+        conn.cursor = wrapped_cursor
+        return conn
+
+    def _dbapi_connection(self, connection):
+        """
+        Return the DBAPI connection from SQLAlchemy connection.
+        
+        Args:
+            connection: SQLAlchemy connection object
+            
+        Returns:
+            DBAPI connection
+        """
+        return connection.connection
+
+    def _cursor(self, connection):
+        """
+        Return a cursor from the connection.
+        
+        Args:
+            connection: SQLAlchemy connection object
+            
+        Returns:
+            DBAPI cursor
+        """
+        cursor = connection.connection.cursor()
+        return HetuEngineCursorWrapper(cursor)
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+        """
+        Execute a statement.
+        
+        This overrides the default implementation to ensure compatibility
+        with JayDeBeAPI cursor.
+        
+        Args:
+            cursor: DBAPI cursor
+            statement: SQL statement
+            parameters: Parameters for the statement
+            context: Execution context
+        """
+        if parameters:
+            cursor.execute(statement, parameters)
+        else:
+            cursor.execute(statement)
+
+    def do_executemany(self, cursor, statement, parameters, context=None):
+        """
+        Execute a statement with multiple parameter sets.
+        
+        Args:
+            cursor: DBAPI cursor
+            statement: SQL statement
+            parameters: List of parameter sets
+            context: Execution context
+        """
+        for params in parameters:
+            if params:
+                cursor.execute(statement, params)
+            else:
+                cursor.execute(statement)
+
+    def get_default_isolation_level(self, dbapi_conn):
+        """
+        Get default isolation level.
+        
+        HetuEngine connections are auto-commit, so we return None.
+        
+        Args:
+            dbapi_conn: DBAPI connection
+            
+        Returns:
+            None (auto-commit mode)
+        """
+        return None
+
+    @property
+    def supports_isolation_level(self):
+        """
+        Whether the dialect supports isolation level setting.
+        
+        Returns:
+            False (HetuEngine doesn't support explicit isolation levels)
+        """
+        return False
+
+    def get_isolation_level(self, dbapi_connection):
+        """
+        Get current isolation level.
+        
+        Args:
+            dbapi_connection: DBAPI connection
+            
+        Returns:
+            None (auto-commit mode)
+        """
+        return None
+
+    def set_isolation_level(self, dbapi_connection, level):
+        """
+        Set isolation level (no-op for HetuEngine).
+        
+        Args:
+            dbapi_connection: DBAPI connection
+            level: Isolation level (ignored)
+        """
+        # Intentionally empty - HetuEngine doesn't support explicit isolation levels
+        pass
+
     def get_schema_names(self, connection, **kw):
         """
         Get list of schema names.
@@ -321,8 +480,10 @@ class HetuEngineDialect(default.DefaultDialect):
             column_name = row[0]
             column_type = row[1]
 
+            # Include both 'name' and 'column_name' for compatibility with different Superset versions
             columns.append({
                 "name": column_name,
+                "column_name": column_name,  # Some Superset versions expect this key
                 "type": self._resolve_type(column_type),
                 "nullable": True,
                 "default": None,
@@ -396,3 +557,135 @@ class HetuEngineDialect(default.DefaultDialect):
             return True
         except Exception:
             return False
+
+    def do_rollback(self, dbapi_connection):  # type: ignore[override]
+        """
+        No-op rollback for auto-commit connections.
+
+        HetuEngine connections via JDBC are in auto-commit mode and don't
+        support explicit transaction control. This method is a no-op to
+        prevent errors when SQLAlchemy tries to rollback.
+
+        Args:
+            dbapi_connection: DBAPI connection (unused)
+        """
+        # Intentionally empty - auto-commit mode doesn't support rollback
+        pass
+
+    def do_commit(self, dbapi_connection):  # type: ignore[override]
+        """
+        No-op commit for auto-commit connections.
+
+        HetuEngine connections via JDBC are in auto-commit mode and don't
+        support explicit transaction control. This method is a no-op to
+        prevent errors when SQLAlchemy tries to commit.
+
+        Args:
+            dbapi_connection: DBAPI connection (unused)
+        """
+        # Intentionally empty - auto-commit mode doesn't need explicit commit
+        pass
+
+    def do_begin(self, dbapi_connection):  # type: ignore[override]
+        """
+        No-op begin for auto-commit connections.
+
+        HetuEngine connections via JDBC are in auto-commit mode and don't
+        support explicit transaction control. This method is a no-op to
+        prevent errors when SQLAlchemy tries to begin a transaction.
+
+        Args:
+            dbapi_connection: DBAPI connection (unused)
+        """
+        # Intentionally empty - auto-commit mode doesn't support transactions
+        pass
+
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+        """
+        Get primary key constraint for a table.
+
+        HetuEngine/Trino doesn't enforce primary key constraints, so this
+        returns an empty constraint.
+
+        Args:
+            connection: Database connection
+            table_name: Table name
+            schema: Schema name
+            **kw: Additional keyword arguments
+
+        Returns:
+            Dictionary with empty constraint info
+        """
+        return {"constrained_columns": [], "name": None}
+
+    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+        """
+        Get foreign key constraints for a table.
+
+        HetuEngine/Trino doesn't enforce foreign key constraints, so this
+        returns an empty list.
+
+        Args:
+            connection: Database connection
+            table_name: Table name
+            schema: Schema name
+            **kw: Additional keyword arguments
+
+        Returns:
+            Empty list
+        """
+        return []
+
+    def get_indexes(self, connection, table_name, schema=None, **kw):
+        """
+        Get indexes for a table.
+
+        HetuEngine/Trino doesn't support traditional indexes, so this
+        returns an empty list.
+
+        Args:
+            connection: Database connection
+            table_name: Table name
+            schema: Schema name
+            **kw: Additional keyword arguments
+
+        Returns:
+            Empty list
+        """
+        return []
+
+    def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+        """
+        Get unique constraints for a table.
+
+        HetuEngine/Trino doesn't enforce unique constraints, so this
+        returns an empty list.
+
+        Args:
+            connection: Database connection
+            table_name: Table name
+            schema: Schema name
+            **kw: Additional keyword arguments
+
+        Returns:
+            Empty list
+        """
+        return []
+
+    def get_check_constraints(self, connection, table_name, schema=None, **kw):
+        """
+        Get check constraints for a table.
+
+        HetuEngine/Trino doesn't enforce check constraints, so this
+        returns an empty list.
+
+        Args:
+            connection: Database connection
+            table_name: Table name
+            schema: Schema name
+            **kw: Additional keyword arguments
+
+        Returns:
+            Empty list
+        """
+        return []

@@ -8,5 +8,5 @@ to Huawei HetuEngine (Trino-based data warehouse) using JDBC bridge.
 from superset_hetuengine.db_engine_spec import HetuEngineSpec
 from superset_hetuengine.sqlalchemy_dialect import HetuEngineDialect
 
-__version__ = "0.1.0"
+__version__ = "0.1.10"
 __all__ = ["HetuEngineSpec", "HetuEngineDialect"]

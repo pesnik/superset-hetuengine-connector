@@ -134,11 +134,11 @@ Java Virtual Machine not found
    /usr/bin/java -XshowSettings:properties -version 2>&1 | grep java.home
 
    # Set JAVA_HOME
-   export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+   export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
    export PATH=$JAVA_HOME/bin:$PATH
 
    # Add to ~/.bashrc or ~/.zshrc for persistence
-   echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> ~/.bashrc
+   echo 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> ~/.bashrc
    ```
 
 3. **Verify Java installation**
@@ -430,7 +430,7 @@ RUN apt-get update && \
     apt-get install -y openjdk-11-jre-headless && \
     rm -rf /var/lib/apt/lists/*
 
-ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 
 USER superset
 ```

@@ -8,7 +8,7 @@ error handling, and configuration management.
 import logging
 import os
 import subprocess
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ def validate_jdbc_jar(jar_path: str) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-def parse_connection_string(connection_string: str) -> Dict[str, str]:
+def parse_connection_string(connection_string: str) -> Dict[str, Any]:
     """
     Parse HetuEngine connection string into components.
 
