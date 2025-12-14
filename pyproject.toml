@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "superset-hetuengine-connector"
-version = "0.1.9"
+version = "0.1.10"
 description = "Apache Superset database connector for Huawei HetuEngine"
 readme = "README.md"
 requires-python = ">=3.8"

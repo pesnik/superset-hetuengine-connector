@@ -17,6 +17,30 @@ from sqlalchemy.sql import compiler
 logger = logging.getLogger(__name__)
 
 
+class HetuEngineCursorWrapper:
+    """
+    Wrapper for JayDeBeAPI cursor to provide missing methods.
+    """
+    
+    def __init__(self, cursor):
+        self._cursor = cursor
+        
+    def __getattr__(self, name):
+        # Delegate all other attributes to the original cursor
+        return getattr(self._cursor, name)
+    
+    def poll(self):
+        """
+        Implement poll() method for compatibility.
+        
+        Returns:
+            True if query is still running, False otherwise
+        """
+        # For JayDeBeAPI, we assume query is complete immediately
+        # since JayDeBeAPI is synchronous
+        return False
+
+
 class HetuEngineIdentifierPreparer(compiler.IdentifierPreparer):
     """Custom identifier preparer for HetuEngine."""
 
@@ -241,6 +265,132 @@ class HetuEngineDialect(default.DefaultDialect):
             jdbc_url += "?" + "&".join(params)
 
         return jdbc_url
+
+    def connect(self, *args, **kwargs):
+        """
+        Create a new connection.
+        
+        Returns:
+            Connection object with wrapped cursor
+        """
+        # Create the connection using parent implementation
+        conn = super().connect(*args, **kwargs)
+        
+        # Create a wrapper for the connection's cursor method
+        original_cursor = conn.cursor
+        
+        def wrapped_cursor():
+            cursor = original_cursor()
+            return HetuEngineCursorWrapper(cursor)
+        
+        conn.cursor = wrapped_cursor
+        return conn
+
+    def _dbapi_connection(self, connection):
+        """
+        Return the DBAPI connection from SQLAlchemy connection.
+        
+        Args:
+            connection: SQLAlchemy connection object
+            
+        Returns:
+            DBAPI connection
+        """
+        return connection.connection
+
+    def _cursor(self, connection):
+        """
+        Return a cursor from the connection.
+        
+        Args:
+            connection: SQLAlchemy connection object
+            
+        Returns:
+            DBAPI cursor
+        """
+        cursor = connection.connection.cursor()
+        return HetuEngineCursorWrapper(cursor)
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+        """
+        Execute a statement.
+        
+        This overrides the default implementation to ensure compatibility
+        with JayDeBeAPI cursor.
+        
+        Args:
+            cursor: DBAPI cursor
+            statement: SQL statement
+            parameters: Parameters for the statement
+            context: Execution context
+        """
+        if parameters:
+            cursor.execute(statement, parameters)
+        else:
+            cursor.execute(statement)
+
+    def do_executemany(self, cursor, statement, parameters, context=None):
+        """
+        Execute a statement with multiple parameter sets.
+        
+        Args:
+            cursor: DBAPI cursor
+            statement: SQL statement
+            parameters: List of parameter sets
+            context: Execution context
+        """
+        for params in parameters:
+            if params:
+                cursor.execute(statement, params)
+            else:
+                cursor.execute(statement)
+
+    def get_default_isolation_level(self, dbapi_conn):
+        """
+        Get default isolation level.
+        
+        HetuEngine connections are auto-commit, so we return None.
+        
+        Args:
+            dbapi_conn: DBAPI connection
+            
+        Returns:
+            None (auto-commit mode)
+        """
+        return None
+
+    @property
+    def supports_isolation_level(self):
+        """
+        Whether the dialect supports isolation level setting.
+        
+        Returns:
+            False (HetuEngine doesn't support explicit isolation levels)
+        """
+        return False
+
+    def get_isolation_level(self, dbapi_connection):
+        """
+        Get current isolation level.
+        
+        Args:
+            dbapi_connection: DBAPI connection
+            
+        Returns:
+            None (auto-commit mode)
+        """
+        return None
+
+    def set_isolation_level(self, dbapi_connection, level):
+        """
+        Set isolation level (no-op for HetuEngine).
+        
+        Args:
+            dbapi_connection: DBAPI connection
+            level: Isolation level (ignored)
+        """
+        # Intentionally empty - HetuEngine doesn't support explicit isolation levels
+        pass
 
     def get_schema_names(self, connection, **kw):
         """
