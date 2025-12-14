@@ -8,7 +8,7 @@ This guide covers configuring HetuEngine database connections in Apache Superset
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
-| `host` | HetuEngine server hostname or IP | `172.22.111.54` |
+| `host` | HetuEngine server hostname or IP | `192.168.111.54` |
 | `port` | HetuEngine server port | `29860` |
 | `username` | Database username | `hetu_user` |
 | `password` | Database password | `********` |
@@ -43,7 +43,7 @@ hetuengine://username:password@host:port/catalog/schema
 
 **Example:**
 ```
-hetuengine://hetu_user:mypassword@172.22.111.54:29860/hive/default
+hetuengine://hetu_user:mypassword@192.168.111.54:29860/hive/default
 ```
 
 ### Step 3: Configure Advanced Settings
@@ -413,14 +413,14 @@ If you have a working DBeaver connection, translate it as follows:
 
 **DBeaver JDBC URL:**
 ```
-jdbc:trino://172.22.111.54:29860,172.22.111.66:29860/hive/default?serviceDiscoveryMode=hsbroker&tenant=production&SSL=true
+jdbc:trino://192.168.111.54:29860,192.168.111.66:29860/hive/default?serviceDiscoveryMode=hsbroker&tenant=production&SSL=true
 ```
 
 **Superset Configuration:**
 
 **SQLAlchemy URI:**
 ```
-hetuengine://your_username:your_password@172.22.111.54,172.22.111.66:29860/hive/default
+hetuengine://your_username:your_password@192.168.111.54,192.168.111.66:29860/hive/default
 ```
 
 **Engine Parameters:**

@@ -112,7 +112,7 @@ export JAVA_HOME=/path/to/java
 
    **Example:**
    ```
-   hetuengine://hetu_user:password@172.22.111.54:29860/hive/default
+   hetuengine://hetu_user:password@192.168.111.54:29860/hive/default
    ```
 
 4. Click **Advanced** → **Other** → **Engine Parameters** and add:
@@ -154,7 +154,7 @@ export JAVA_HOME=/path/to/java
 For high availability, you can specify multiple hosts:
 
 ```
-hetuengine://user:password@172.22.111.54,172.22.111.66:29860/hive/default
+hetuengine://user:password@192.168.111.54,192.168.111.66:29860/hive/default
 ```
 
 **Engine Parameters:**
@@ -192,14 +192,14 @@ If you have a working connection in DBeaver, here's how to translate it to Super
 
 **DBeaver JDBC URL:**
 ```
-jdbc:trino://172.22.111.54:29860,172.22.111.66:29860/hive/default?serviceDiscoveryMode=hsbroker&tenant=default&SSL=true
+jdbc:trino://192.168.111.54:29860,192.168.111.66:29860/hive/default?serviceDiscoveryMode=hsbroker&tenant=default&SSL=true
 ```
 
 **Equivalent Superset Configuration:**
 
 **SQLAlchemy URI:**
 ```
-hetuengine://username:password@172.22.111.54,172.22.111.66:29860/hive/default
+hetuengine://username:password@192.168.111.54,192.168.111.66:29860/hive/default
 ```
 
 **Engine Parameters:**
@@ -314,7 +314,7 @@ from superset_hetuengine.utils import test_jdbc_connection
 
 success, error = test_jdbc_connection(
     jar_path="/opt/hetuengine-jdbc.jar",
-    host="172.22.111.54",
+    host="192.168.111.54",
     port=29860,
     username="hetu_user",
     password="password",

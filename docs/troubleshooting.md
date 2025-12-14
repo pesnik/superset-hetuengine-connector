@@ -27,9 +27,9 @@ Unable to connect to HetuEngine server
 1. **HetuEngine server is not running**
    ```bash
    # Check if server is reachable
-   telnet 172.22.111.54 29860
+   telnet 192.168.111.54 29860
    # or
-   nc -zv 172.22.111.54 29860
+   nc -zv 192.168.111.54 29860
    ```
 
 2. **Wrong host or port**
@@ -39,7 +39,7 @@ Unable to connect to HetuEngine server
 3. **Firewall blocking connection**
    ```bash
    # Test connectivity
-   curl -v telnet://172.22.111.54:29860
+   curl -v telnet://192.168.111.54:29860
    ```
    - Contact network administrator to open port 29860
 
@@ -496,7 +496,7 @@ from superset_hetuengine.utils import test_jdbc_connection
 
 success, error = test_jdbc_connection(
     jar_path="/opt/hetuengine-jdbc.jar",
-    host="172.22.111.54",
+    host="192.168.111.54",
     port=29860,
     username="admin",
     password="password",
@@ -606,7 +606,7 @@ If you're still experiencing issues:
 
 **SQLAlchemy URI:**
 ```
-hetuengine://admin:password@172.22.111.54:29860/hive/default
+hetuengine://admin:password@192.168.111.54:29860/hive/default
 ```
 
 **Engine Parameters:**

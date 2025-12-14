@@ -53,7 +53,7 @@ hetuengine://admin:password@host1.example.com,host2.example.com,host3.example.co
 
 **With IP addresses:**
 ```
-hetuengine://admin:password@172.22.111.54,172.22.111.66,172.22.111.78:29860/hive/default
+hetuengine://admin:password@192.168.111.54,192.168.111.66,192.168.111.78:29860/hive/default
 ```
 
 ## SSL Connection
@@ -331,7 +331,7 @@ SELECT * FROM default.sample_table LIMIT 10;
 If you have a working DBeaver connection, translate it as follows:
 
 **DBeaver Configuration:**
-- **JDBC URL:** `jdbc:trino://172.22.111.54:29860/hive/default?serviceDiscoveryMode=hsbroker&tenant=production&SSL=true`
+- **JDBC URL:** `jdbc:trino://192.168.111.54:29860/hive/default?serviceDiscoveryMode=hsbroker&tenant=production&SSL=true`
 - **Username:** `admin`
 - **Password:** `password`
 - **Driver:** HetuEngine JDBC Driver
@@ -340,7 +340,7 @@ If you have a working DBeaver connection, translate it as follows:
 
 **SQLAlchemy URI:**
 ```
-hetuengine://admin:password@172.22.111.54:29860/hive/default
+hetuengine://admin:password@192.168.111.54:29860/hive/default
 ```
 
 **Engine Parameters:**
