@@ -34,7 +34,8 @@ class TestHetuEngineDialect(unittest.TestCase):
     def test_dbapi(self):
         """Test that dbapi returns jaydebeapi module."""
         import jaydebeapi
-        self.assertEqual(self.dialect.dbapi(), jaydebeapi)
+        # dbapi is a classmethod; SQLAlchemy stores the module on the instance
+        self.assertIs(type(self.dialect).dbapi(), jaydebeapi)
 
     @patch.dict(os.environ, {"HETUENGINE_JDBC_JAR": "/opt/test.jar"})
     @patch("os.path.exists", return_value=True)

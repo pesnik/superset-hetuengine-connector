@@ -15,6 +15,19 @@ HetuEngine is Huawei's enterprise data warehouse based on Trino/Presto. This con
 
 Standard Python Trino clients don't support HetuEngine-specific connection parameters (`serviceDiscoveryMode`, `tenant`), which are required for proper connectivity. This connector bridges the gap by using Huawei's JDBC driver through JayDeBeAPI.
 
+## Compatibility
+
+| Connector | Apache Superset |
+|---|---|
+| 0.1.14+ | 5.0.x and 6.x (tested with 5.0.0 and 6.1.0) |
+| ≤ 0.1.13 | 5.0.x only. On 6.x it fails to import (`superset.sql_parse` was removed) |
+
+Superset 6.x notes handled by 0.1.14:
+- `Table` is imported from `superset.sql.parse`.
+- `get_extra_params()` accepts the new `source` argument.
+- HetuEngine SQL is parsed and formatted with sqlglot's **Trino** dialect. Otherwise 6.x rewrites `VARCHAR` as `TEXT`, which HetuEngine rejects with "Unknown type: TEXT".
+- JDBC (`java.sql.SQLException`) errors are reported as their real message instead of an `AttributeError`.
+
 ## Features
 
 - Full JDBC bridge support for HetuEngine connectivity

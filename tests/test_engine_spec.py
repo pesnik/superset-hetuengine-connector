@@ -4,7 +4,7 @@ import unittest
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from superset_hetuengine.db_engine_spec import HetuEngineSpec
+from superset_hetuengine.db_engine_spec import HetuEngineSpec, Table
 
 
 class TestHetuEngineSpec(unittest.TestCase):
@@ -224,15 +224,15 @@ class TestHetuEngineSpec(unittest.TestCase):
         mock_inspector.get_schema_names.return_value = ["schema1", "schema2"]
 
         schemas = HetuEngineSpec.get_schema_names(mock_inspector)
-        self.assertEqual(schemas, ["schema1", "schema2"])
+        self.assertEqual(schemas, {"schema1", "schema2"})
 
     def test_get_schema_names_error(self):
-        """Test getting schema names with error returns empty list."""
+        """Test getting schema names with error returns an empty set."""
         mock_inspector = MagicMock()
         mock_inspector.get_schema_names.side_effect = Exception("Error")
 
         schemas = HetuEngineSpec.get_schema_names(mock_inspector)
-        self.assertEqual(schemas, [])
+        self.assertEqual(schemas, set())
 
     def test_get_table_names_success(self):
         """Test getting table names successfully."""
@@ -243,10 +243,10 @@ class TestHetuEngineSpec(unittest.TestCase):
         tables = HetuEngineSpec.get_table_names(
             mock_database, mock_inspector, "test_schema"
         )
-        self.assertEqual(tables, ["table1", "table2"])
+        self.assertEqual(tables, {"table1", "table2"})
 
     def test_get_table_names_error(self):
-        """Test getting table names with error returns empty list."""
+        """Test getting table names with error returns an empty set."""
         mock_inspector = MagicMock()
         mock_inspector.get_table_names.side_effect = Exception("Error")
         mock_database = MagicMock()
@@ -254,7 +254,7 @@ class TestHetuEngineSpec(unittest.TestCase):
         tables = HetuEngineSpec.get_table_names(
             mock_database, mock_inspector, "test_schema"
         )
-        self.assertEqual(tables, [])
+        self.assertEqual(tables, set())
 
     def test_get_view_names_success(self):
         """Test getting view names successfully."""
@@ -265,7 +265,7 @@ class TestHetuEngineSpec(unittest.TestCase):
         views = HetuEngineSpec.get_view_names(
             mock_database, mock_inspector, "test_schema"
         )
-        self.assertEqual(views, ["view1", "view2"])
+        self.assertEqual(views, {"view1", "view2"})
 
     def test_get_columns_success(self):
         """Test getting columns successfully."""
@@ -276,8 +276,9 @@ class TestHetuEngineSpec(unittest.TestCase):
         ]
 
         columns = HetuEngineSpec.get_columns(
-            mock_inspector, "test_table", "test_schema"
+            mock_inspector, Table("test_table", "test_schema")
         )
+        mock_inspector.get_columns.assert_called_once_with("test_table", "test_schema")
         self.assertEqual(len(columns), 2)
         self.assertEqual(columns[0]["name"], "col1")
 
