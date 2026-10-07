@@ -17,7 +17,11 @@ from superset.db_engine_specs.presto import PrestoEngineSpec
 from superset.errors import ErrorLevel, SupersetError, SupersetErrorType
 from superset.models.core import Database
 from superset.superset_typing import ResultSetColumnType
-from superset.sql_parse import Table
+try:
+    # Superset >= 6.0 (superset.sql_parse was removed)
+    from superset.sql.parse import Table
+except ImportError:  # Superset 5.x
+    from superset.sql_parse import Table
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +107,7 @@ class HetuEngineSpec(PrestoEngineSpec):
         return None
 
     @staticmethod
-    def get_extra_params(database) -> Dict[str, Any]:
+    def get_extra_params(database, source: Optional[Any] = None) -> Dict[str, Any]:
         """
         Extract HetuEngine-specific parameters from database configuration.
 
@@ -115,7 +119,11 @@ class HetuEngineSpec(PrestoEngineSpec):
         """
         import json
 
-        extra_params = PrestoEngineSpec.get_extra_params(database)
+        # Superset >= 6.0 passes `source`; 5.x does not accept it
+        if source is None:
+            extra_params = PrestoEngineSpec.get_extra_params(database)
+        else:
+            extra_params = PrestoEngineSpec.get_extra_params(database, source)
 
         # Extract HetuEngine-specific parameters from encrypted_extra or extra
         # These might be JSON strings that need to be parsed
@@ -380,6 +388,24 @@ class HetuEngineSpec(PrestoEngineSpec):
         return super().extract_error_message(ex)
 
     @classmethod
+    def _extract_error_message(cls, ex: Exception) -> str:
+        """
+        Extract the raw error message.
+
+        PrestoEngineSpec assumes PyHive-style exceptions whose first argument is
+        an error dict and calls ``.get()`` on it. JayDeBeApi raises exceptions
+        wrapping ``java.sql.SQLException`` objects instead, which would turn
+        every SQL error into an AttributeError. Fall back to the generic
+        message extraction for anything that is not a dict.
+        """
+        args = getattr(ex, "args", None)
+        if args and isinstance(args[0], dict):
+            return super()._extract_error_message(ex)
+        from superset.utils import core as superset_utils
+
+        return superset_utils.error_msg_from_exception(ex)
+
+    @classmethod
     def validate_parameters(
         cls, parameters: Dict[str, Any]
     ) -> List[SupersetError]:
@@ -494,3 +520,23 @@ class HetuEngineSpec(PrestoEngineSpec):
             "partitions": {"cols": [], "latest": {}},
             "metadata": {},
         }
+
+
+def _register_sqlglot_dialect() -> None:
+    """
+    Parse and format HetuEngine SQL with sqlglot's Trino dialect.
+
+    Superset >= 6.0 parses/formats SQL with sqlglot, keyed by engine name.
+    Unknown engines fall back to the generic dialect, which rewrites e.g.
+    ``CAST(x AS VARCHAR)`` as ``CAST(x AS TEXT)`` - rejected by HetuEngine
+    ("Unknown type: TEXT"). Superset 5.x has no such mapping; nothing to do.
+    """
+    try:
+        from sqlglot.dialects.dialect import Dialects
+        from superset.sql.parse import SQLGLOT_DIALECTS
+    except ImportError:  # Superset 5.x
+        return
+    SQLGLOT_DIALECTS.setdefault(HetuEngineSpec.engine, Dialects.TRINO)
+
+
+_register_sqlglot_dialect()
